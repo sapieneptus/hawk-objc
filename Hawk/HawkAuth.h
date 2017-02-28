@@ -11,32 +11,54 @@
 #import "HawkError.h"
 
 typedef NS_ENUM(NSUInteger, HawkAuthType) {
-    HawkAuthTypeHeader,
-    HawkAuthTypeResponse,
-    HawkAuthTypeBewit
+        HawkAuthTypeHeader,
+        HawkAuthTypeResponse,
+        HawkAuthTypeBewit
 };
+
+const static NSString *kHawkHeaderVersion = @"1";
 
 @interface HawkAuth : NSObject
 
-@property (nonatomic) HawkCredentials *credentials;
+#pragma mark - Fluent API-style Builder Methods
 
-@property (nonatomic) NSString *method;
-@property (nonatomic) NSString *requestUri;
-@property (nonatomic) NSString *host;
-@property (nonatomic) NSUInteger port;
++ (instancetype)withCredentials:(HawkCredentials *)credentials;
+- (instancetype)withMethod:(NSString *)method;
+- (instancetype)withURL:(NSURL *)url;
+- (instancetype)withTimestamp:(NSDate *)timestamp;
 
-@property (nonatomic) NSDate *timestamp;
-@property (nonatomic) NSString *nonce;
-@property (nonatomic) NSString *ext;
+/*
+ Generates an opaque, unique nonce.
+ Overrides existing nonce, if any.
+ */
+- (instancetype)generateNonce;
 
-@property (nonatomic) NSString *app;
-@property (nonatomic) NSString *dlg;
+/*
+ Set nonce using a value of your choice.
+ Overrides existing nonce, if any.
+ */
+- (instancetype)withNonce:(NSString *)nonce;
 
-@property (nonatomic) NSString *payload;
-@property (nonatomic) NSString *contentType;
+- (instancetype)withExt:(NSString *)ext;
+- (instancetype)withApp:(NSString *)applicationID;
+- (instancetype)withDlg:(NSString *)dlg;
+- (instancetype)withPayload:(NSString *)payload;
+- (instancetype)withContentType:(NSString *)contentType;
 
-@property (nonatomic) NSString *digest;
-@property (nonatomic) NSString *hmac;
+@property (nonatomic, readonly) HawkCredentials *credentials;
+
+@property (nonatomic, readonly) NSString *method;
+@property (nonatomic, readonly) NSURL *url;
+
+@property (nonatomic, readonly) NSDate *timestamp;
+@property (nonatomic, readonly) NSString *nonce;
+@property (nonatomic, readonly) NSString *ext;
+
+@property (nonatomic, readonly) NSString *app;
+@property (nonatomic, readonly) NSString *dlg;
+
+@property (nonatomic, readonly) NSString *payload;
+@property (nonatomic, readonly) NSString *contentType;
 
 #pragma mark -
 
@@ -62,10 +84,20 @@ typedef NS_ENUM(NSUInteger, HawkAuthType) {
 
 #pragma mark -
 
+/*
+ Key and value for authorization header.
+ @return 'Authorization: Hawk id='<id>', <etc...>`
+ */
 - (NSString *)requestHeader;
 
-- (NSString *)responseHeader;
+/*
+ Returns only value for authorization header.
+ @return 'Hawk id='<id>', <etc...>`
+ */
+- (NSString *)requestHeaderValue;
 
+- (NSString *)responseHeader;
+- (NSString *)responseHeaderValue;
 - (NSString *)timestampSkewHeader;
 
 #pragma mark -
@@ -73,10 +105,12 @@ typedef NS_ENUM(NSUInteger, HawkAuthType) {
 // Parses header attributes
 - (NSDictionary *)parseAuthorizationHeader:(NSString *)header;
 
-// Returns an instance of HawkError if invalid or nil if valid
-// Sets self.credentials if valid
-// self.nonce, self.timestamp, and self.app are set with values from header when valid hawk id
-// credentialsLookup(<hawk id>) block should return an instance of HawkCredentials or nil
+/*
+ Returns an instance of HawkError if invalid or nil if valid
+ Sets self.credentials if valid
+ self.nonce, self.timestamp, and self.app are set with values from header when valid hawk id
+ credentialsLookup(<hawk id>) block should return an instance of HawkCredentials or nil
+ */
 - (HawkError *)validateRequestHeader:(NSString *)header
                    credentialsLookup:(HawkCredentials *(^)(NSString *hawkId))credentialsLookup;
 
